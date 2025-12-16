@@ -1,0 +1,4 @@
+test/
+.env
+data/*.csv
+results/

@@ -1,0 +1,33 @@
+# Paths to local CSV files
+DATA_NAME_DAY:
+  GOOG: 'data/GOOG_DAY.csv'
+  AVGO: 'data/AVGO_DAY.csv'
+  LLY: 'data/LLY_DAY.csv'
+  GS: 'data/GS_DAY.csv'
+  AXP: 'data/AXP_DAY.csv'
+  MRK: 'data/MRK_DAY.csv'
+  ISRG: 'data/ISRG_DAY.csv'
+  MU: 'data/MU_DAY.csv'
+  STX: 'data/STX_DAY.csv'
+
+# Data time frame
+DATA_TF: 'day'
+
+# Fees and slippage
+FEES: 0
+SLIPPAGE: 0
+
+# Position size
+SIZE: 100
+SIZE_TYPE: 'amount'
+
+# Initial balance
+INIT_BALANCE: 10000
+
+# Backtesting period
+BACKTESTING_DATES:
+  START: '2024-01-01'
+  END: '2025-12-31'
+
+# Number of days under Exit Price
+DAYS_UNDER_EXIT: 1
