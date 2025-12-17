@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
+import vectorbt as vbt
 from typing import Tuple
-
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+import os
 
 # MTI SIGNAL
 
@@ -155,3 +158,230 @@ def calculate_exit_price(
     result = chandelier_exit(df, length=22, mult=mult)
 
     return result["long_stop"]
+
+
+# DATA
+
+
+def load_data(config):
+    data = {}
+    data_config = config["DATA_NAME_DAY"]
+    start_date = config["BACKTESTING_DATES"]["START"]
+    end_date = config["BACKTESTING_DATES"]["END"]
+
+    for symbol, path in data_config.items():
+        df = pd.read_csv(path)
+        df["Time"] = pd.to_datetime(df["Time"])
+        df = df.set_index("Time")
+        df = df.sort_index()
+
+        df = df.loc[start_date:end_date]
+        df = df.loc[start_date:end_date]
+        data[symbol] = df
+
+    return data
+
+
+# INDICATORS
+
+
+def calculate_indicators(data):
+    indicators = {}
+
+    for symbol, df in data.items():
+        if len(df) < 90:
+            continue
+
+        mti_signal = calculate_mti_signal(df)
+        mti_trend = calculate_mti_trend(mti_signal)
+
+        exit_levels = pd.Series(index=df.index, dtype=float)
+        for i in range(90, len(df)):
+            current_color = mti_signal.iloc[i]
+            window_df = df.iloc[i - 89 : i + 1]
+            exit_price_series = calculate_exit_price(
+                window_df, current_color, window=90
+            )
+            exit_levels.iloc[i] = exit_price_series.iloc[-1]
+
+        indicators[symbol] = {
+            "mti_signal": mti_signal,
+            "mti_trend": mti_trend,
+            "exit_level": exit_levels,
+            "close": df["Close"],
+        }
+
+    return indicators
+
+
+# SIGNALS
+
+
+def generate_signals(indicators, days_under_exit):
+    signals = {}
+
+    for symbol, ind in indicators.items():
+        mti_signal = ind["mti_signal"]
+        exit_level = ind["exit_level"]
+        close = ind["close"]
+
+        entries = (mti_signal == "G") & (mti_signal.shift(1) != "G")
+
+        under_exit = close < exit_level
+        repeating_under = pd.Series(0, index=close.index, dtype=int)
+        number = 0
+        for i in range(len(under_exit)):
+            if under_exit.iloc[i] and not pd.isna(exit_level.iloc[i]):
+                number += 1
+            else:
+                number = 0
+            repeating_under.iloc[i] = number
+
+        exits = repeating_under >= days_under_exit
+        signals[symbol] = (entries, exits)
+
+    return signals
+
+
+# BACKTEST
+
+
+def run_backtest(data, signals, config):
+    symbols = list(signals.keys())
+
+    price_dict = {}
+    for ticker in symbols:
+        price_dict[ticker] = data[ticker]["Close"]
+    price = pd.DataFrame(price_dict)
+
+    entries_dict = {}
+    for ticker in symbols:
+        entries_dict[ticker] = signals[ticker][0]
+    entries = pd.DataFrame(entries_dict)
+
+    exits_dict = {}
+    for ticker in symbols:
+        exits_dict[ticker] = signals[ticker][1]
+    exits = pd.DataFrame(exits_dict)
+
+    portfolio = vbt.Portfolio.from_signals(
+        close=price,
+        entries=entries,
+        exits=exits,
+        size=config["SIZE"],
+        size_type=config["SIZE_TYPE"],
+        init_cash=config["INIT_BALANCE"],
+        fees=config["FEES"],
+        slippage=config["SLIPPAGE"],
+        freq="D",
+    )
+
+    return portfolio
+
+
+# OUTPUT
+
+
+# def save_backtesting_results(pf, output_dir="results"):
+
+#     os.makedirs(output_dir, exist_ok=True)
+
+#     for symbol in pf.symbols:
+#         stats = pf[symbol].stats()
+#         stats_df = stats.to_frame(name="Value")
+
+#         pdf_path = os.path.join(output_dir, f"{symbol}_bcts_res.pdf")
+
+#         with PdfPages(pdf_path) as pdf:
+#             fig_height = max(6, len(stats_df) * 0.35)
+#             fig, ax = plt.subplots(figsize=(8.5, fig_height))
+#             ax.axis("off")
+
+#             table = ax.table(
+#                 cellText=stats_df.values,
+#                 rowLabels=stats_df.index,
+#                 colLabels=stats_df.columns,
+#                 cellLoc="center",
+#                 loc="center",
+#             )
+
+#             table.auto_set_font_size(False)
+#             table.set_fontsize(9)
+#             table.scale(1, 1.3)
+
+#             pdf.savefig(fig, bbox_inches="tight")
+#             plt.close(fig)
+
+#         print(f"PDF saved for {symbol} in {pdf_path}")
+
+
+def trade_log(days_under_exit, portfolio, output_dir="results"):
+
+    path = os.path.join(output_dir, f"trades_log_{days_under_exit}.csv")
+    trades = portfolio.trades.records_readable
+    if not trades.empty:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        trades.to_csv(path, index=False)
+    return trades
+
+
+def save_backtesting_results(days_under_exit, pf, output_dir="results"):
+    os.makedirs(output_dir, exist_ok=True)
+
+    try:
+        if hasattr(pf.wrapper, "columns"):
+            symbols = pf.wrapper.columns.tolist()
+        elif hasattr(pf, "close"):
+            symbols = pf.close.columns.tolist()
+        else:
+            symbols = list(pf.wrapper.columns)
+
+    except Exception as e:
+        print(f"Error getting symbols: {e}")
+        print("Available attributes:", dir(pf))
+        print("Wrapper columns:", pf.wrapper.columns)
+        return
+
+    print(f"\nGenerating PDFs for {len(symbols)} symbols: {symbols}")
+
+    for symbol in symbols:
+        try:
+            print(f"\nProcessing {symbol}...")
+
+            symbol_pf = pf[symbol]
+            stats = symbol_pf.stats()
+            stats_df = stats.to_frame(name="Value")
+
+            pdf_path = os.path.join(
+                output_dir, f"{symbol}_report_{days_under_exit}.pdf"
+            )
+
+            with PdfPages(pdf_path) as pdf:
+                fig_height = max(6, len(stats_df) * 0.35)
+                fig, ax = plt.subplots(figsize=(8.5, fig_height))
+                ax.axis("off")
+
+                table = ax.table(
+                    cellText=stats_df.values,
+                    rowLabels=stats_df.index,
+                    colLabels=stats_df.columns,
+                    cellLoc="center",
+                    loc="center",
+                )
+
+                table.auto_set_font_size(False)
+                table.set_fontsize(9)
+                table.scale(1, 1.3)
+
+                pdf.savefig(fig, bbox_inches="tight")
+                plt.close(fig)
+
+            print(f"Saved: {pdf_path}")
+
+        except Exception as e:
+            print(f"Error for {symbol}: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    print(f"All PDFs saved to: {os.path.abspath(output_dir)}/")

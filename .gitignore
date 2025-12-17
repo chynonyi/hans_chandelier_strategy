@@ -2,3 +2,6 @@ test/
 .env
 data/*.csv
 results/
+*/__pycache__
+__pycache__
+.venv

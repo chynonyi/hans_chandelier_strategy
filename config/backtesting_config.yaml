@@ -30,4 +30,4 @@ BACKTESTING_DATES:
   END: '2025-12-31'
 
 # Number of days under Exit Price
-DAYS_UNDER_EXIT: 1
+DAYS_UNDER_EXIT: 3
