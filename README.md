@@ -1,14 +1,3 @@
-Below is a **single, consolidated English README section**, combining:
-
-* **How the strategy and code work (MTI + Chandelier Exit)**
-* **How the backtests were run**
-* **How the results should be interpreted by a client**
-* **11-year vs 2-year performance context**
-
-This version is ready to be pasted directly into your repository.
-
----
-
 # Strategy Overview and Backtest Interpretation
 
 **MTI + Chandelier Exit (Daily Timeframe)**
