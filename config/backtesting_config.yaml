@@ -26,7 +26,7 @@ INIT_BALANCE: 10000
 
 # Backtesting period
 BACKTESTING_DATES:
-  START: '2024-01-01'
+  START: '2015-01-01'
   END: '2025-12-31'
 
 # Number of days under Exit Price

@@ -97,20 +97,20 @@ for token in tokens:
         print(f"No data fetched for {symbol}")
 
 
-# tickers = {
-#     "GOOG": "data/GOOG_DAY.csv",
-#     "AVGO": "data/AVGO_DAY.csv",
-#     "LLY": "data/LLY_DAY.csv",
-#     "GS": "data/GS_DAY.csv",
-#     "AXP": "data/AXP_DAY.csv",
-#     "MRK": "data/MRK_DAY.csv",
-#     "ISRG": "data/ISRG_DAY.csv",
-#     "MU": "data/MU_DAY.csv",
-#     "STX": "data/STX_DAY.csv"
-# }
+tickers = {
+    "GOOG": "data/GOOG_DAY.csv",
+    "AVGO": "data/AVGO_DAY.csv",
+    "LLY": "data/LLY_DAY.csv",
+    "GS": "data/GS_DAY.csv",
+    "AXP": "data/AXP_DAY.csv",
+    "MRK": "data/MRK_DAY.csv",
+    "ISRG": "data/ISRG_DAY.csv",
+    "MU": "data/MU_DAY.csv",
+    "STX": "data/STX_DAY.csv",
+}
 
-# for symbol, path in tickers.items():
-#     df = pd.read_csv(path)
-#     df["Time"] = pd.to_datetime(df["Time"])
-#     df = df.sort_values("Time")
-#     df.to_csv(path, index=False)
+for symbol, path in tickers.items():
+    df = pd.read_csv(path)
+    df["Time"] = pd.to_datetime(df["Time"])
+    df = df.sort_values("Time")
+    df.to_csv(path, index=False)
