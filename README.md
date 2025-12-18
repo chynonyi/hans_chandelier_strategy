@@ -1,4 +1,4 @@
-# Strategy Overview and Backtest Interpretation
+# Strategy Overview, Backtest Interpretation and MTI + Chandelier Exit (1 / 2 / 3 Days Under Exit)
 
 **MTI + Chandelier Exit (Daily Timeframe)**
 
@@ -218,3 +218,198 @@ For each ticker, a **separate PDF report** is generated, including:
 * Average Trade Duration
 
 All metrics are reported **per individual asset**, not averaged across tickers.
+
+
+Ниже — **точный, профессиональный перевод на английский**, без упрощений и «маркетинга», в формате, готовом для вставки в README.
+
+---
+
+## Exit Confirmation Sensitivity Analysis
+
+**MTI + Chandelier Exit (1 / 2 / 3 Days Under Exit)**
+
+The analysis is conducted **in-sample**, with **no changes to entry logic, position sizing, or parameters**, except for `days_under_exit`.
+
+---
+
+## 1. Long-Term Horizon (2015–2025)
+
+### 1.1 GOOG
+
+| Exit Delay | Total Return | Max DD | Sharpe | Calmar | Trades |
+| ---------- | ------------ | ------ | ------ | ------ | ------ |
+| 1 day      | 170%         | 22.4%  | 0.92   | 0.63   | 56     |
+| 2 days     | 173%         | 28.3%  | 0.90   | 0.50   | 46     |
+| 3 days     | 190%         | 30.0%  | 0.95   | 0.50   | 42     |
+
+**Interpretation:**
+
+Increasing `days_under_exit`:
+
+* reduces turnover,
+* increases trend holding duration,
+* increases both drawdown magnitude and duration.
+
+The Sharpe Ratio changes only marginally, implying that **risk increases faster than reward**.
+
+The 3-day exit delivers the highest nominal return but exhibits a **worse tail-risk profile**.
+
+---
+
+### 1.2 LLY
+
+| Exit Delay | Total Return | Max DD | Sharpe | Calmar | Trades |
+| ---------- | ------------ | ------ | ------ | ------ | ------ |
+| 1 day      | 248%         | 23.2%  | 0.95   | 0.77   | 54     |
+| 2 days     | 266%         | 25.8%  | 0.94   | 0.73   | 43     |
+| 3 days     | 187%         | 29.1%  | 0.77   | 0.52   | 41     |
+
+**Interpretation:**
+
+The 3-day exit clearly deteriorates performance:
+
+* lower Sharpe,
+* worse Calmar,
+* higher drawdowns.
+
+The 2-day exit maximizes nominal returns but does **not** improve risk-adjusted metrics.
+
+The 1-day exit delivers the **most stable performance profile**.
+
+---
+
+### 1.3 STX
+
+| Exit Delay | Total Return | Max DD | Sharpe | Calmar | Trades |
+| ---------- | ------------ | ------ | ------ | ------ | ------ |
+| 1 day      | 109%         | 21.3%  | 0.63   | 0.48   | 58     |
+| 2 days     | 133%         | 19.4%  | 0.70   | 0.61   | 45     |
+| 3 days     | 121%         | 25.7%  | 0.66   | 0.43   | 37     |
+
+**Interpretation:**
+
+STX benefits from a **moderate exit delay**.
+
+The 2-day exit delivers:
+
+* the highest Sharpe,
+* the lowest drawdown,
+* the best Calmar ratio.
+
+The 3-day exit again worsens tail-risk characteristics.
+
+---
+
+### 1.4 Summary for 2015–2025
+
+**General pattern:**
+
+* `days_under_exit = 1`
+
+  * lower drawdowns,
+  * higher turnover,
+  * more stable risk-adjusted metrics.
+
+* `days_under_exit = 3`
+
+  * higher nominal returns in strong trends,
+  * worse drawdowns and recovery,
+  * stronger regime dependency.
+
+The optimal setting is **asset-dependent**, but:
+
+* **1–2 days dominate** across assets,
+* 3 days are **rarely justified** over long horizons.
+
+---
+
+## 2. Short-Term Horizon (2024–2025)
+
+A key characteristic of this period is a **trend-dominated regime combined with a small number of trades**.
+
+---
+
+### 2.1 GOOG
+
+| Exit Delay | Return | Max DD | Sharpe | Calmar | Trades |
+| ---------- | ------ | ------ | ------ | ------ | ------ |
+| 1 day      | 91%    | 11.9%  | 1.99   | 5.18   | 8      |
+| 2 days     | 104%   | 10.1%  | 2.11   | 6.90   | 6      |
+| 3 days     | 115%   | 11.3%  | 2.23   | 6.77   | 5      |
+
+**Interpretation:**
+
+All variants appear **exceptionally strong**.
+
+The improvement in metrics is driven by:
+
+* strong, persistent trends,
+* low pullback volatility,
+* dominance of one or two trades in total PnL.
+
+Differences between the 2-day and 3-day exits are **not statistically significant**.
+
+---
+
+### 2.2 LLY
+
+| Exit Delay | Return | Max DD | Sharpe | Calmar |
+| ---------- | ------ | ------ | ------ | ------ |
+| 1 day      | 19.8%  | 21.1%  | 0.77   | 0.68   |
+| 2 days     | 20.1%  | 25.8%  | 0.72   | 0.56   |
+| 3 days     | 13.7%  | 29.1%  | 0.53   | 0.34   |
+
+**Interpretation:**
+
+Even in a bullish regime, LLY:
+
+* does not benefit from slower exits.
+
+The 3-day exit is **strictly dominated**.
+
+---
+
+### 2.3 STX
+
+| Exit Delay | Return | Max DD | Sharpe | Calmar |
+| ---------- | ------ | ------ | ------ | ------ |
+| 1 day      | 98%    | 21.6%  | 1.74   | 3.05   |
+| 2 days     | 104%   | 19.9%  | 1.78   | 3.49   |
+| 3 days     | 98%    | 26.5%  | 1.68   | 2.49   |
+
+**Interpretation:**
+
+The long-term pattern repeats:
+
+* the **2-day exit is optimal**.
+
+The 3-day exit increases tail risk without sufficient compensation.
+
+---
+
+## 3. Key Conclusions (Across Horizons)
+
+### 3.1 Structural Effects of `days_under_exit`
+
+Increasing the number of days under the exit level:
+
+* reduces the number of trades,
+* increases average holding duration,
+* amplifies beta exposure.
+
+Risk-adjusted metrics **do not improve monotonically**.
+
+---
+
+### 3.2 Regime Dependency
+
+During **trend-dominated periods (2024–2025)**:
+
+* all variants appear strong,
+* differences are unstable,
+* the risk of over-interpretation is high.
+
+Across a **full market cycle (2015–2025)**:
+
+* differences become economically meaningful,
+* **tail risk becomes the dominant factor**.
