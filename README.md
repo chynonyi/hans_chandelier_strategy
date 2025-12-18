@@ -1,52 +1,76 @@
-## 1. Strategy Overview
+Below is a **single, consolidated English README section**, combining:
 
-The strategy is based on a combination of the **MTI (Market Trend Indicator)** and the **Chandelier Exit**, and is designed for trading on **daily timeframes**.
+* **How the strategy and code work (MTI + Chandelier Exit)**
+* **How the backtests were run**
+* **How the results should be interpreted by a client**
+* **11-year vs 2-year performance context**
+
+This version is ready to be pasted directly into your repository.
 
 ---
 
-### 1.1 MTI Signal (Market Trend Indicator)
+# Strategy Overview and Backtest Interpretation
 
-MTI classifies market conditions into three color states:
+**MTI + Chandelier Exit (Daily Timeframe)**
+
+---
+
+## 1. Strategy Overview
+
+This strategy combines a **Market Trend Indicator (MTI)** for regime detection with a **Chandelier Exit–based trailing stop**.
+It is designed for **daily data** and operates as a **trend-following system with volatility-adjusted exits**.
+
+The strategy should be understood primarily as an **entry + exit framework**, not as a standalone alpha generator.
+
+---
+
+## 1.1 Market Trend Indicator (MTI)
+
+The MTI classifies market conditions into three discrete states:
 
 * **G (Green)** — bullish / upward trend
 * **Y (Yellow)** — neutral or transition phase
 * **R (Red)** — bearish / downward trend
 
-The indicator logic is based on:
+The MTI logic is derived from:
 
 * the relationship between **SMA(20)** and **SMA(50)**,
 * the position of price relative to **SMA(20)**,
 * the slope (direction) of **SMA(20)**.
 
+The MTI state is recalculated daily and used both for **entry timing** and **exit sensitivity**.
+
 ---
 
-### 1.2 Entry Logic
+## 1.2 Entry Logic
 
 A **long entry** is triggered when:
 
 * the MTI signal switches **to Green (G)**,
-* and a long position is **not already open**.
+* and no long position is currently open.
 
-This prevents repeated entries during an ongoing bullish regime.
+This rule prevents repeated entries during the same bullish regime and ensures that each trend is traded only once.
 
 ---
 
-### 1.3 Exit Logic
+## 1.3 Exit Logic (Chandelier Exit)
 
-Exits are based on the **Chandelier Exit**, which dynamically adapts to market volatility using **ATR**.
+Exits are based on the **Chandelier Exit**, which adapts dynamically to volatility via **ATR**.
 
-The ATR multiplier depends on the current MTI color:
+The ATR multiplier is **state-dependent**:
 
-* **G → 3.0**
-* **Y → 2.0**
-* **R → 1.5**
+| MTI State  | ATR Multiplier |
+| ---------- | -------------- |
+| Green (G)  | 3.0            |
+| Yellow (Y) | 2.0            |
+| Red (R)    | 1.5            |
 
 An additional confirmation filter is applied:
 
-* the position is closed only if the price remains **below the exit level** for **N consecutive days**
-  (`days_under_exit`, configurable via the config file).
+* the position is closed only if the **closing price remains below the Chandelier Exit level for N consecutive days**
+* `days_under_exit` is configurable via the config file
 
-This reduces premature exits caused by short-term noise.
+This filter reduces premature exits caused by short-term noise.
 
 ---
 
@@ -54,62 +78,154 @@ This reduces premature exits caused by short-term noise.
 
 ### 2.1 Data
 
-Price data can be loaded from the **FMP service** by running `data/load_data_fmp.py`.
+* Price data is loaded via the **Financial Modeling Prep (FMP)** service using `data/load_data_fmp.py`.
+* For **daily timeframes**, FMP is preferred over Insight Sentry due to higher data consistency.
+* For each ticker:
 
-For **daily timeframes**, FMP is preferred over Insight Sentry, as it provides more accurate daily data.
-
-For each ticker:
-
-* data is sorted chronologically,
-* a unified date range from the configuration file is applied.
+  * data is sorted chronologically,
+  * a unified date range (from the config file) is applied.
 
 ---
 
 ### 2.2 Indicator Calculation
 
-For each ticker:
+For each asset:
 
-1. The MTI signal (color) is calculated.
-2. The MTI trend (transition direction) is calculated.
-3. For each trading day (after sufficient historical data is available):
+1. MTI state (color) is computed.
+2. MTI trend transitions are detected.
+3. For each trading day (after sufficient history is available):
 
    * the Chandelier Exit is recalculated on a **rolling window**,
    * the corresponding exit level is stored.
 
-All calculations are performed **without look-ahead bias**
-(i.e., using only information available at that point in time).
+All calculations are performed **without look-ahead bias** — only information available at that time is used.
 
 ---
 
 ### 2.3 Backtest Execution
 
-The backtest is executed using **synchronous multi-asset trading**.
+The backtest is run using **synchronous multi-asset logic**.
 
-**Baseline backtest assumptions:**
+**Baseline assumptions:**
 
-* **No commissions** (fees = 0)
-* **No slippage** (slippage = 0)
-* **Fixed position size:** 100 USD per trade
-* **Initial portfolio balance:** 10,000 USD
+* **Commissions:** 0
+* **Slippage:** 0
+* **Position size:** fixed 100 USD per trade
+* **Initial capital:** 10,000 USD
 
-All of the above parameters — including position size, fee structure, slippage, and initial capital — are **fully configurable via the configuration file** and can be adjusted as needed.
+All parameters (fees, slippage, sizing, capital, exit confirmation days) are **fully configurable**.
 
 ---
 
-## 3. Results
+## 3. Backtest Horizons and Results
 
-### 3.1 Output Format
+Two distinct evaluation horizons are presented.
 
-A **separate PDF report is generated for each ticker**, containing:
+---
 
-* key portfolio metrics:
+## 3.1 Long-Term Results (11 Years: 2015–2025)
 
-  * Total Return
-  * Max Drawdown
-  * Sharpe Ratio
-  * Win Rate
-  * Profit Factor
-  * Number of Trades
-  * Average Trade Duration
+The primary evaluation covers **~11 years of data**, including multiple market regimes.
 
-All metrics are aggregated **per individual asset**, not averaged across tickers.
+### Observations
+
+* Returns are generally **below buy & hold**.
+* Maximum drawdowns range from **~25% to ~45%**.
+* Drawdown durations often exceed **2–3 years**.
+* Sharpe Ratios typically fall between **0.3 and 0.9**.
+* Calmar Ratios are mostly **below 0.5**.
+
+### Interpretation
+
+* The strategy does **not generate persistent alpha** across full cycles.
+* Performance is largely driven by:
+
+  * market beta,
+  * convex payoff from a small number of strong trends.
+* Risk-adjusted returns are **not sufficient** to justify the strategy as a standalone investment.
+* The strategy does **not consistently reduce drawdowns** versus holding the underlying asset.
+
+---
+
+## 3.2 Short-Term Results (2 Years: 2024–2025)
+
+A secondary analysis focuses on the **last ~2 years**, using the **same strategy logic** but a more aggressive exit configuration:
+
+* **Exit after 1 consecutive close below the Chandelier Exit level**
+
+### Observed Characteristics
+
+* Sharpe Ratios: **~1.5–2.2**
+* Calmar Ratios: **~2.5–6.7**
+* Maximum drawdowns reduced to **~11–26%**
+* In some cases, returns are comparable to or exceed benchmarks
+
+---
+
+## 4. Why Recent Results Are Significantly Better
+
+The improved performance in 2024–2025 should be interpreted carefully.
+
+### Key drivers
+
+1. **Market regime**
+
+   * Strong, persistent trends (AI, semiconductors, large-cap growth).
+   * Highly favorable conditions for trailing-stop strategies.
+
+2. **Higher exit sensitivity**
+
+   * Faster exits reduce time spent in drawdowns.
+   * Upside participation increases.
+   * Market exposure (beta) becomes higher.
+   * Regime dependency increases.
+
+3. **Small sample size**
+
+   * Only **5–8 trades per ticker**.
+   * One or two trades dominate total PnL.
+   * Risk-adjusted metrics are **statistically unstable**.
+
+---
+
+## 5. Correct Interpretation
+
+### What the results show
+
+* The MTI + Chandelier Exit framework performs **very well in strong trending environments**.
+* As an **exit overlay**, it can materially improve risk-adjusted performance under favorable regimes.
+
+### What the results do not show
+
+* Long-term robustness across market regimes.
+* Stable alpha independent of market direction.
+* Parameter stability across cycles.
+
+---
+
+## 6. 11-Year vs 2-Year Comparison
+
+| Aspect                 | 11 Years (2015–2025) | 2 Years (2024–2025) |
+| ---------------------- | -------------------- | ------------------- |
+| Regime coverage        | Full market cycle    | Trend-dominated     |
+| Statistical robustness | Higher               | Low                 |
+| Sharpe Ratio           | 0.3–0.9              | 1.5–2.2             |
+| Drawdowns              | Long and deep        | Shorter and smaller |
+| Overfitting risk       | Low                  | High                |
+| Investment reliability | Moderate / Low       | Preliminary         |
+
+---
+
+## Output and Reporting
+
+For each ticker, a **separate PDF report** is generated, including:
+
+* Total Return
+* Maximum Drawdown
+* Sharpe Ratio
+* Win Rate
+* Profit Factor
+* Number of Trades
+* Average Trade Duration
+
+All metrics are reported **per individual asset**, not averaged across tickers.
